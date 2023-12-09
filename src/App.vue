@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onBeforeMount, reactive, watch } from 'vue';
+import { ref, onBeforeMount, watch } from 'vue';
 
 type Element = {
   row: number;
@@ -18,8 +18,8 @@ const bombsCount = ref(5);
 const counter = ref(0);
 const showBombs = ref(false)
 const showed = ref(0);
-const currentGame: 'win' | 'lose' | 'playing' = ref('playing');
-const elements: Element[] = ref([]);
+const currentGame = ref<'win' | 'lose' | 'playing'>('playing');
+const elements = ref<Element[]>([]);
 
 const getRandom = (n: number) => Math.floor(Math.random() * n);
 
@@ -125,11 +125,11 @@ const spreadAround = (el: Element) => {
   });
 };
 
-const handleRightClick = (element) => {
+const handleRightClick = (element: Element) => {
   element.flag = !element.flag;
 };
 
-const handleShowElement = (element) => {
+const handleShowElement = (element: Element) => {
   element.show = true;
   showed.value++;
 
@@ -148,7 +148,7 @@ const handleLose = () => {
   showAllBombs();
 };
 
-const handleClick = (element) => {
+const handleClick = (element: Element) => {
   if (element.isBomb) {
     handleLose();
   } else {
@@ -192,7 +192,7 @@ watch([rows, cols, bombsCount], play);
   </h1>
   <div class="board">
     <button
-      v-for="(element, i) of elements"
+      v-for="element of elements"
       @click="handleClick(element)"
       @contextmenu.prevent="handleRightClick(element)"
       class="element"
