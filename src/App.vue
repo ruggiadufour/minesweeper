@@ -20,9 +20,9 @@ const showBombs = ref(false);
 const showed = ref(0);
 const currentGame = ref<"win" | "lose" | "playing" | "waiting">("waiting");
 const elements = ref<Element[]>([]);
-const intervalId = ref()
-const logs = reactive(new Map())
-const showingReplay = ref(false)
+const intervalId = ref();
+const logs = reactive(new Map());
+const showingReplay = ref(false);
 
 const getRandom = (n: number) => Math.floor(Math.random() * n);
 
@@ -67,21 +67,21 @@ const generateBoard = () => {
   }));
 };
 
-const generateLog = (element: Element)=>{
-  if(showingReplay.value) return
+const generateLog = (element: Element, type: "flag" | "select") => {
+  if (showingReplay.value) return;
 
-  logs.set(counter.value, element)
-}
+  logs.set(counter.value, { element, type });
+};
 
-const generateTimer = ()=>{
-  const INTERVAL = 250
-  intervalId.value = setInterval(()=>{
-    counter.value+=INTERVAL
-    showingReplay && checkReplayStep()
-  },INTERVAL)
-}
+const generateTimer = () => {
+  const INTERVAL = 250;
+  intervalId.value = setInterval(() => {
+    counter.value += INTERVAL;
+    showingReplay && checkReplayStep();
+  }, INTERVAL);
+};
 
-const closeTimer = ()=>clearInterval(intervalId.value)
+const closeTimer = () => clearInterval(intervalId.value);
 
 const getElement = (row: number, col: number): Element => {
   const index = row * cols.value + col;
@@ -98,49 +98,52 @@ const generateArounds = () => {
     });
 };
 
-const reset = (clearLogs=true) => {
+const reset = (clearLogs = true) => {
   counter.value = 0;
   showed.value = 0;
   currentGame.value = "playing";
-  clearLogs && logs.clear()
-  closeTimer()
+  clearLogs && logs.clear();
+  closeTimer();
 };
 
 const play = () => {
   reset();
-  showingReplay.value = false
+  showingReplay.value = false;
   generateBoard();
   generateBombs();
   generateArounds();
-  generateTimer()
+  generateTimer();
 };
 
-const hideAll = ()=>{
-  elements.value.forEach(el=>{
-    el.show = false
-  })
-}
+const resetAllStatus = () => {
+  elements.value.forEach((el) => {
+    el.show = false;
+    el.flag = false;
+  });
+};
 
-const checkReplayStep = ()=>{
-  const element = logs.get(counter.value)
-  element && handleClick(element)
-}
+const checkReplayStep = () => {
+  const { element, type } = logs.get(counter.value);
+  if (element) {
+    if (type === "select") handleClick(element);
+    else handleRightClick(element);
+  }
+};
 
-const replay = ()=>{
-  showingReplay.value = true
-  reset(false)
-  hideAll()
-  generateTimer()
-}
-
+const replay = () => {
+  showingReplay.value = true;
+  reset(false);
+  resetAllStatus();
+  generateTimer();
+};
 
 const around = (data: {
   row: number;
   col: number;
   callback: (el: Element) => void;
 }) => {
-  const subArrColStart = data.col - 1
-  const subArrRowStart =  data.row - 1
+  const subArrColStart = data.col - 1;
+  const subArrRowStart = data.row - 1;
   for (let c = subArrColStart; c < subArrColStart + 3; c++) {
     if (c < 0 || c >= cols.value) continue;
 
@@ -169,6 +172,7 @@ const spreadAround = (el: Element) => {
 };
 
 const handleRightClick = (element: Element) => {
+  generateLog(element, "flag");
   element.flag = !element.flag;
 };
 
@@ -184,19 +188,19 @@ const handleShowElement = (element: Element) => {
 
 const handleWin = () => {
   currentGame.value = "win";
-  closeTimer()
+  closeTimer();
 };
 
 const handleLose = () => {
   currentGame.value = "lose";
   showAllBombs();
-  closeTimer()
+  closeTimer();
 };
 
 const handleClick = (element: Element) => {
-  if(element.show) return 
+  if (element.show) return;
 
-  generateLog(element)
+  generateLog(element, "select");
 
   if (element.isBomb) {
     handleLose();
@@ -207,7 +211,6 @@ const handleClick = (element: Element) => {
     }
   }
 };
-
 
 watch([rows, cols, bombsCount], play);
 </script>
@@ -231,12 +234,12 @@ watch([rows, cols, bombsCount], play);
       <input v-model="showBombs" type="checkbox" />
     </div>
     <br />
-    <span>Time: {{ Math.round(counter/1000) }}</span>
+    <span>Time: {{ Math.round(counter / 1000) }}</span>
     <br />
     <button @click="play">
       {{ currentGame === "waiting" ? "Play" : "Reset" }}
     </button>
-    <button :disabled="logs.size===0" @click="replay">Replay</button>
+    <button :disabled="logs.size === 0" @click="replay">Replay</button>
   </div>
 
   <div v-if="currentGame !== 'waiting'">
