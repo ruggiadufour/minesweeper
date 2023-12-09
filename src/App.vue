@@ -16,6 +16,7 @@ const rows = ref(10);
 const cols = ref(7);
 const bombsCount = ref(5);
 const counter = ref(0);
+const showBombs = ref(false)
 const showed = ref(0);
 const currentGame: 'win' | 'lose' | 'playing' = ref('playing');
 const elements: Element[] = ref([]);
@@ -179,6 +180,10 @@ watch([rows, cols, bombsCount], play);
       <label>Bombs: </label>
       <input v-model="bombsCount" type="number" />
     </div>
+    <div>
+      <label>Show bombs: </label>
+      <input v-model="showBombs" type="checkbox" />
+    </div>
     <br />
     <button @click="play">Reset</button>
   </div>
@@ -194,7 +199,11 @@ watch([rows, cols, bombsCount], play);
       :class="{ show: element.show }"
       :disabled="currentGame !== 'playing'"
     >
-      <div v-if="element.show">
+
+      <div v-if="showBombs && element.isBomb">
+        <span v-if="element.isBomb">💣</span>
+      </div>
+      <div v-else-if="element.show">
         <span v-if="element.isBomb">💣</span>
         <span v-else-if="element.count > 0">{{ element.count }}</span>
       </div>
