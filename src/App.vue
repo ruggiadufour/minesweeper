@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onBeforeMount, watch, reactive } from "vue";
+import { ref, watch, reactive } from "vue";
 
 type Element = {
   row: number;
