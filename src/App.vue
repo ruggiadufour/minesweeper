@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onBeforeMount, watch } from 'vue';
+import { ref, onBeforeMount, watch, reactive } from "vue";
 
 type Element = {
   row: number;
@@ -16,15 +16,18 @@ const rows = ref(10);
 const cols = ref(7);
 const bombsCount = ref(5);
 const counter = ref(0);
-const showBombs = ref(false)
+const showBombs = ref(false);
 const showed = ref(0);
-const currentGame = ref<'win' | 'lose' | 'playing'>('playing');
+const currentGame = ref<"win" | "lose" | "playing" | "waiting">("waiting");
 const elements = ref<Element[]>([]);
+const intervalId = ref()
+const logs = reactive(new Map())
+const showingReplay = ref(false)
 
 const getRandom = (n: number) => Math.floor(Math.random() * n);
 
 const getRowColNum = (str: RowCol) => {
-  const [row, col] = str.split('-');
+  const [row, col] = str.split("-");
   return { row: Number(row), col: Number(col) };
 };
 
@@ -64,6 +67,22 @@ const generateBoard = () => {
   }));
 };
 
+const generateLog = (element: Element)=>{
+  if(showingReplay.value) return
+
+  logs.set(counter.value, element)
+}
+
+const generateTimer = ()=>{
+  const INTERVAL = 250
+  intervalId.value = setInterval(()=>{
+    counter.value+=INTERVAL
+    showingReplay && checkReplayStep()
+  },INTERVAL)
+}
+
+const closeTimer = ()=>clearInterval(intervalId.value)
+
 const getElement = (row: number, col: number): Element => {
   const index = row * cols.value + col;
   return elements.value[index];
@@ -79,29 +98,53 @@ const generateArounds = () => {
     });
 };
 
-const reset = () => {
+const reset = (clearLogs=true) => {
   counter.value = 0;
   showed.value = 0;
-  currentGame.value = 'playing';
+  currentGame.value = "playing";
+  clearLogs && logs.clear()
+  closeTimer()
 };
 
 const play = () => {
   reset();
+  showingReplay.value = false
   generateBoard();
   generateBombs();
   generateArounds();
+  generateTimer()
 };
+
+const hideAll = ()=>{
+  elements.value.forEach(el=>{
+    el.show = false
+  })
+}
+
+const checkReplayStep = ()=>{
+  const element = logs.get(counter.value)
+  element && handleClick(element)
+}
+
+const replay = ()=>{
+  showingReplay.value = true
+  reset(false)
+  hideAll()
+  generateTimer()
+}
+
 
 const around = (data: {
   row: number;
   col: number;
   callback: (el: Element) => void;
 }) => {
-  const subArr00 = [data.col - 1, data.row - 1];
-  for (let c = subArr00[0]; c < subArr00[0] + 3; c++) {
+  const subArrColStart = data.col - 1
+  const subArrRowStart =  data.row - 1
+  for (let c = subArrColStart; c < subArrColStart + 3; c++) {
     if (c < 0 || c >= cols.value) continue;
 
-    for (let r = subArr00[1]; r < subArr00[1] + 3; r++) {
+    for (let r = subArrRowStart; r < subArrRowStart + 3; r++) {
       if (r < 0 || r >= rows.value) continue;
 
       const el = getElement(r, c);
@@ -140,15 +183,21 @@ const handleShowElement = (element: Element) => {
 };
 
 const handleWin = () => {
-  currentGame.value = 'win';
+  currentGame.value = "win";
+  closeTimer()
 };
 
 const handleLose = () => {
-  currentGame.value = 'lose';
+  currentGame.value = "lose";
   showAllBombs();
+  closeTimer()
 };
 
 const handleClick = (element: Element) => {
+  if(element.show) return 
+
+  generateLog(element)
+
   if (element.isBomb) {
     handleLose();
   } else {
@@ -159,9 +208,6 @@ const handleClick = (element: Element) => {
   }
 };
 
-onBeforeMount(() => {
-  play();
-});
 
 watch([rows, cols, bombsCount], play);
 </script>
@@ -185,30 +231,37 @@ watch([rows, cols, bombsCount], play);
       <input v-model="showBombs" type="checkbox" />
     </div>
     <br />
-    <button @click="play">Reset</button>
-  </div>
-  <h1 v-if="currentGame !== 'playing'">
-    {{ currentGame === 'win' ? 'You Won!' : 'You Lose!' }}
-  </h1>
-  <div class="board">
-    <button
-      v-for="element of elements"
-      @click="handleClick(element)"
-      @contextmenu.prevent="handleRightClick(element)"
-      class="element"
-      :class="{ show: element.show }"
-      :disabled="currentGame !== 'playing'"
-    >
-
-      <div v-if="showBombs && element.isBomb">
-        <span v-if="element.isBomb">💣</span>
-      </div>
-      <div v-else-if="element.show">
-        <span v-if="element.isBomb">💣</span>
-        <span v-else-if="element.count > 0">{{ element.count }}</span>
-      </div>
-      <span v-if="!element.show && element.flag">🚩</span>
+    <span>Time: {{ Math.round(counter/1000) }}</span>
+    <br />
+    <button @click="play">
+      {{ currentGame === "waiting" ? "Play" : "Reset" }}
     </button>
+    <button :disabled="logs.size===0" @click="replay">Replay</button>
+  </div>
+
+  <div v-if="currentGame !== 'waiting'">
+    <h1 v-if="currentGame !== 'playing'">
+      {{ currentGame === "win" ? "You Won!" : "You Lose!" }}
+    </h1>
+    <div class="board">
+      <button
+        v-for="element of elements"
+        @click="handleClick(element)"
+        @contextmenu.prevent="handleRightClick(element)"
+        class="element"
+        :class="{ show: element.show }"
+        :disabled="currentGame !== 'playing'"
+      >
+        <div v-if="showBombs && element.isBomb">
+          <span v-if="element.isBomb">💣</span>
+        </div>
+        <div v-else-if="element.show">
+          <span v-if="element.isBomb">💣</span>
+          <span v-else-if="element.count > 0">{{ element.count }}</span>
+        </div>
+        <span v-if="!element.show && element.flag">🚩</span>
+      </button>
+    </div>
   </div>
 </template>
 
