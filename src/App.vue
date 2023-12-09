@@ -41,7 +41,7 @@ const generateBombs = () => {
         col = getRandom(cols.value);
 
       position = `${row}-${col}`;
-    } while (bombs.has(position));
+    } while (bombs.has(position) && bombs.size < elements.value.length);
     bombs.set(position, true);
 
     const { row, col } = getRowColNum(position);
@@ -144,13 +144,15 @@ const around = (data: {
 }) => {
   const subArrColStart = data.col - 1;
   const subArrRowStart = data.row - 1;
-  for (let c = subArrColStart; c < subArrColStart + 3; c++) {
-    if (c < 0 || c >= cols.value) continue;
+  const ARR_LENGTH = 3;
 
-    for (let r = subArrRowStart; r < subArrRowStart + 3; r++) {
-      if (r < 0 || r >= rows.value) continue;
+  for (let col = subArrColStart; col < subArrColStart + ARR_LENGTH; col++) {
+    if (col < 0 || col >= cols.value) continue;
 
-      const el = getElement(r, c);
+    for (let row = subArrRowStart; row < subArrRowStart + ARR_LENGTH; row++) {
+      if (row < 0 || row >= rows.value) continue;
+
+      const el = getElement(row, col);
       data.callback(el);
     }
   }
